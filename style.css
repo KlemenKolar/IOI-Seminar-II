@@ -1,0 +1,13 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+canvas {
+  display: block;
+}
+
+.liveView {
+  left:15cm;
+  margin: 5cm;
+}
