@@ -7,8 +7,6 @@ import {
   
   let handLandmarker = undefined;
   let runningMode = "IMAGE";
-  let enableWebcamButton;
-  let webcamRunning = false;
   
   // Before we can use HandLandmarker class we must wait for it to finish
   // loading. Machine Learning models can be large and take a moment to
@@ -37,26 +35,22 @@ import {
   
   // If webcam supported, add event listener to button for when user
   // wants to activate it.
-  if (hasGetUserMedia()) {
-    enableWebcamButton = document.getElementById("webcamButton");
-    enableWebcamButton.addEventListener("click", enableCam);
-  } else {
-    console.warn("getUserMedia() is not supported by your browser");
-  }
+
+  window.addEventListener('enablecam', (e) => {
+    let enable = e.detail.message;
+    if (hasGetUserMedia() && enable) {
+      enableCam();
+    } else {
+      console.warn("getUserMedia() is not supported by your browser");
+    }
+  });
+  
   
   // Enable the live webcam view and start detection.
   function enableCam(event) {
     if (!handLandmarker) {
       console.log("Wait! objectDetector not loaded yet.");
       return;
-    }
-  
-    if (webcamRunning === true) {
-      webcamRunning = false;
-      enableWebcamButton.innerText = "ENABLE PREDICTIONS";
-    } else {
-      webcamRunning = true;
-      enableWebcamButton.innerText = "DISABLE PREDICTIONS";
     }
   
     // getUsermedia parameters.
@@ -90,7 +84,6 @@ import {
       lastVideoTime = video.currentTime;
       results = handLandmarker.detectForVideo(video, startTimeMs);
     }
-    //console.log(results)
 
     const event = new CustomEvent('predictions', { detail: { message: results } });
     window.dispatchEvent(event);
@@ -109,8 +102,6 @@ import {
     canvasCtx.restore();
   
     // Call this function again to keep predicting when the browser is ready.
-    if (webcamRunning === true) {
-      window.requestAnimationFrame(predictWebcam);
-    }
+    window.requestAnimationFrame(predictWebcam);
     return results;
   }
