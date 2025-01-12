@@ -3,11 +3,13 @@ let carX, carY;
 let carWidth = 50, carHeight = 100;
 let roadWidth = 300;
 let obstacles = [];
-let speed = 5;
+let defaultSpeed = 5;
+let speed = 0;
 let score = 0;
 let slider;
 let minSens = 1;
 let maxSens = 200;
+let zStart = 0;
 
 // menu variables
 let menuButtons = []
@@ -75,7 +77,7 @@ function draw() {
     for (let i = obstacles.length - 1; i >= 0; i--) {
       let obs = obstacles[i];
       rect(obs.x, obs.y, obs.width, obs.height);
-      obs.y += speed;
+      obs.y += defaultSpeed + speed;
 
       //collision
       if (
@@ -169,6 +171,7 @@ function getAngle(c1, c2) {
 window.addEventListener('predictions', (e) => {
   //console.log(e.detail.message);
   let pred = e.detail.message;
+  //console.log(pred);
   if (pred.handednesses.length == 2) {
     let leftHand, rightHand;
     //console.log(pred.handednesses[0][0].categoryName);
@@ -190,11 +193,13 @@ window.addEventListener('predictions', (e) => {
     //-vrednost gre v levo
     // +vrednost gre v desno
 
+
+    //HANDLE STEERING
+    //------------------------
     let step = 15;
-    console.log(angle);
 
     if (angle < 0.05 && angle > -0.05) {
-      console.log("Forward");
+      //console.log("Forward");
     } else if (angle >= 0.05 && carX < width / 2 + roadWidth / 2 - carWidth) {
       //console.log("Right");
       carX += step*angle*(slider.value()/maxSens);
@@ -202,6 +207,25 @@ window.addEventListener('predictions', (e) => {
       //console.log("Left");
       carX -= step*abs(angle)*(slider.value()/maxSens);
     }
+    //------------------------
+
+
+    //HANDLE SPEED
+    //------------------------
+    let avgZ = (leftHandCoord.z + rightHandCoord.z) / 2;
+
+    console.log(avgZ/zStart);
+    if(zStart == 0) {
+      //initialize starting distance
+      zStart = avgZ;
+    } else if (avgZ/zStart < 1.1 && avgZ/zStart > 0.9) {
+      //console.log("Don't change the speed");
+    } else if (zStart < avgZ) {
+      speed = -zStart/avgZ;
+    } else if (zStart > avgZ) {
+      speed = avgZ/zStart;
+    }
+    //------------------------
   }
 });
 
