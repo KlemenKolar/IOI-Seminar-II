@@ -1,7 +1,7 @@
 // game variables
 let carX, carY;
 let carWidth = 50, carHeight = 100;
-let roadWidth = 300;
+let roadWidth = 500;
 let obstacles = [];
 let defaultSpeed = 5;
 let speed = 0;
@@ -10,6 +10,7 @@ let slider;
 let minSens = 1;
 let maxSens = 200;
 let zStart = 0;
+let obstacleColors = ["black", "white", "darkgreen", "darkyellow", "silver", "blue", "lightblue", "magenta"];
 
 // menu variables
 let menuButtons = []
@@ -29,7 +30,7 @@ function setup() {
   menuButtons.push(new Button(100, 170, 200, 50, "Options"));
   menuButtons.push(new Button(100, 240, 200, 50, "Quit"));
 
-  backButton = new Button(100, 100, 200, 50, "Back");
+  backButton = new Button(50, 100, 200, 50, "Back");
 
   const canvasContainer = document.getElementById('game');
   canvas.parent(canvasContainer);
@@ -43,16 +44,20 @@ function setup() {
 function draw() {
   if(page == 0) {
     background(255);
+    textSize(50);
+    fill(255, 0, 0);
+    text("Handless racer", width/4, 50);
     drawMenuButtons();
   }
   if(page == 1) {
-    background(50);
+    background("green");
 
     fill(100);
     rect(width / 2 - roadWidth / 2, 0, roadWidth, height);
 
-    fill(200, 0, 0);
-    rect(carX, carY, carWidth, carHeight);
+    //fill(200, 0, 0);
+    //rect(carX, carY, carWidth, carHeight);
+    drawDriversCar(carX, carY, carWidth, carHeight);
 
     if (keyIsDown(LEFT_ARROW) && carX > width / 2 - roadWidth / 2) {
       carX -= 5;
@@ -66,8 +71,9 @@ function draw() {
       obstacles.push({
         x: random(width / 2 - roadWidth / 2, width / 2 + roadWidth / 2 - 40),
         y: -40,
-        width: 40,
-        height: 40
+        width: 50,
+        height: 100,
+        color: obstacleColors[Math.floor(Math.random() * obstacleColors.length)],
       });
       score++;
     }
@@ -76,7 +82,8 @@ function draw() {
     fill(0, 0, 200);
     for (let i = obstacles.length - 1; i >= 0; i--) {
       let obs = obstacles[i];
-      rect(obs.x, obs.y, obs.width, obs.height);
+      //rect(obs.x, obs.y, obs.width, obs.height);
+      drawObstaclesCar(obs.x, obs.y, obs.width, obs.height, obs.color);
       obs.y += defaultSpeed + speed;
 
       //collision
@@ -91,6 +98,8 @@ function draw() {
         fill(255, 0, 0);
         textAlign(CENTER, CENTER);
         text("Game Over", width / 2, height / 2);
+        //drawBackButton();
+        //enableBackButton();
       }
 
       //remove obstacles that are past us
@@ -101,7 +110,7 @@ function draw() {
 
     textSize(16);
     fill(255);
-    text("Score: " + score, 10, 20);
+    text("Score: " + score, 50, 20);
   }
   if (page == 2) {
     background(255);
@@ -114,6 +123,74 @@ function draw() {
     //TODO
     page = 0;
   }
+}
+
+function drawDriversCar(x, y, carWidth, carHeight) {
+  // Body of the car
+  fill(200, 0, 0); // Red color
+  rectMode(CENTER);
+  rect(x, y, carWidth, carHeight, 10); // Rounded rectangle for the car body
+  
+  // Windows
+  fill(100, 200, 255); // Light blue color
+    //front
+  rect(x, y - 12, carWidth * 0.8, carHeight * 0.2, 5); // Window area
+    //back
+  rect(x, y + 25, carWidth * 0.8, carHeight * 0.1, 5); // Window area
+  
+  // Wheels
+  fill("#232b2b"); // Dark gray for the wheels
+  let wheelOffsetX = carWidth * 0.55;
+  let wheelOffsetY = carHeight * 0.6;
+  ellipse(x - wheelOffsetX, y - wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Top-left wheel
+  ellipse(x + wheelOffsetX, y - wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Top-right wheel
+  ellipse(x - wheelOffsetX, y + wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Bottom-left wheel
+  ellipse(x + wheelOffsetX, y + wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Bottom-right wheel
+  
+  // Headlights
+  fill(255, 255, 100); // Yellow for headlights
+  ellipse(x - carWidth * 0.35, y - carHeight * 0.5, 10, 10); // Left headlight
+  ellipse(x + carWidth * 0.35, y - carHeight * 0.5, 10, 10); // Right headlight
+  
+  // Tail lights
+  fill(255, 50, 50); // Red for tail lights
+  ellipse(x - carWidth * 0.35, y + carHeight * 0.5, 10, 10); // Left tail light
+  ellipse(x + carWidth * 0.35, y + carHeight * 0.5, 10, 10); // Right tail light
+  rectMode(CORNER);
+}
+
+function drawObstaclesCar(x, y, carWidth, carHeight, color) {
+  // Body of the car
+  fill(color); // Red color
+  rectMode(CENTER);
+  rect(x, y, carWidth, carHeight, 10); // Rounded rectangle for the car body
+  
+  // Windows
+  fill(100, 200, 255); // Light blue color
+    //front
+  rect(x, y + 12, carWidth * 0.8, carHeight * 0.2, 5); // Window area
+    //back
+  rect(x, y - 25, carWidth * 0.8, carHeight * 0.1, 5); // Window area
+  
+  // Wheels
+  fill("#232b2b"); // Dark gray for the wheels
+  let wheelOffsetX = carWidth * 0.55;
+  let wheelOffsetY = carHeight * 0.6;
+  ellipse(x - wheelOffsetX, y - wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Top-left wheel
+  ellipse(x + wheelOffsetX, y - wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Top-right wheel
+  ellipse(x - wheelOffsetX, y + wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Bottom-left wheel
+  ellipse(x + wheelOffsetX, y + wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Bottom-right wheel
+  
+  // Tail lights
+  fill("red"); // Red for headlights
+  ellipse(x - carWidth * 0.35, y - carHeight * 0.5, 10, 10); // Left headlight
+  ellipse(x + carWidth * 0.35, y - carHeight * 0.5, 10, 10); // Right headlight
+  
+  // Head lights
+  fill("yellow"); // Yellow for tail lights
+  ellipse(x - carWidth * 0.35, y + carHeight * 0.5, 10, 10); // Left tail light
+  ellipse(x + carWidth * 0.35, y + carHeight * 0.5, 10, 10); // Right tail light
+  rectMode(CORNER);
 }
 
 function drawMenuButtons() {
@@ -214,7 +291,7 @@ window.addEventListener('predictions', (e) => {
     //------------------------
     let avgZ = (leftHandCoord.z + rightHandCoord.z) / 2;
 
-    console.log(avgZ/zStart);
+    //console.log(avgZ/zStart);
     if(zStart == 0) {
       //initialize starting distance
       zStart = avgZ;
@@ -284,6 +361,7 @@ class Button {
       console.log("Back")
       enableBackButton(false);
       enableMenuButtons(true);
+      loop()
     }
   }
 }
