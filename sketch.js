@@ -6,19 +6,26 @@ let obstacles = [];
 let defaultSpeed = 5;
 let speed = 0;
 let score = 0;
-let slider;
+let slider, checkbox;
 let minSens = 1;
 let maxSens = 200;
 let zStart = 0;
 let obstacleColors = ["black", "white", "darkgreen", "darkyellow", "silver", "blue", "lightblue", "magenta"];
+let linesOffset = 7;
+let obstacleWidth = 50, obstacleHeight = 100;
+let enableDrawLandmarks = false;
+let playBrake = true;
+const activeAudioSources = [];
 
 // menu variables
 let menuButtons = []
 
 let backButton;
 
+let retryButton;
+
 // other variables
-let page = 0; // 0..menu, 1...game, 2...options, 3...quit
+let page = 0; // 0..menu, 1...game, 2...options, 3...quit, 4...end of game
 
 function setup() {
   console.log("setup called");
@@ -28,22 +35,29 @@ function setup() {
 
   menuButtons.push(new Button(100, 100, 200, 50, "Start Game"));
   menuButtons.push(new Button(100, 170, 200, 50, "Options"));
-  menuButtons.push(new Button(100, 240, 200, 50, "Quit"));
+  //menuButtons.push(new Button(100, 240, 200, 50, "Quit"));
 
-  backButton = new Button(50, 100, 200, 50, "Back");
+  backButton = new Button(40, 40, 100, 40, "Back");
+
+  retryButton = new Button(40, 100, 100, 40, "Retry");
 
   const canvasContainer = document.getElementById('game');
   canvas.parent(canvasContainer);
 
   slider = createSlider(minSens, maxSens, Math.round(maxSens/2), 1);
-  slider.position(100, 520);
+  slider.position(100, 200);
   slider.size(200, 20);
   slider.hide();
+
+  checkbox = createCheckbox();
+  checkbox.position(230, 140)
+  checkbox.size(20, 20);
+  checkbox.hide();
 }
 
 function draw() {
   if(page == 0) {
-    background(255);
+    background("white");
     textSize(50);
     fill(255, 0, 0);
     text("Handless racer", width/4, 50);
@@ -55,25 +69,31 @@ function draw() {
     fill(100);
     rect(width / 2 - roadWidth / 2, 0, roadWidth, height);
 
-    //fill(200, 0, 0);
-    //rect(carX, carY, carWidth, carHeight);
     drawDriversCar(carX, carY, carWidth, carHeight);
 
-    if (keyIsDown(LEFT_ARROW) && carX > width / 2 - roadWidth / 2) {
+    if (keyIsDown(LEFT_ARROW) && carX > width / 2 - roadWidth / 2 + carWidth) {
       carX -= 5;
     }
     if (keyIsDown(RIGHT_ARROW) && carX < width / 2 + roadWidth / 2 - carWidth) {
       carX += 5;
     }
 
+    //road lines
+    fill("#EDEADE");
+    rect(width / 2 - roadWidth / 2 + linesOffset, 0, 10, height);
+    rect(width / 2 + roadWidth / 2 - 2*linesOffset, 0, 10, height);
+
     //obstacles
-    if (frameCount % 60 == 0) {
+    let validX = getValidObstacleX(3);
+
+    if (frameCount % 60 == 0 && validX != null) {
       obstacles.push({
-        x: random(width / 2 - roadWidth / 2, width / 2 + roadWidth / 2 - 40),
+        x: validX,
         y: -40,
-        width: 50,
-        height: 100,
+        width: obstacleWidth,
+        height: obstacleHeight,
         color: obstacleColors[Math.floor(Math.random() * obstacleColors.length)],
+        speed: defaultSpeed * random(0.9, 1.3),
       });
       score++;
     }
@@ -82,9 +102,8 @@ function draw() {
     fill(0, 0, 200);
     for (let i = obstacles.length - 1; i >= 0; i--) {
       let obs = obstacles[i];
-      //rect(obs.x, obs.y, obs.width, obs.height);
       drawObstaclesCar(obs.x, obs.y, obs.width, obs.height, obs.color);
-      obs.y += defaultSpeed + speed;
+      obs.y += obs.speed + speed;
 
       //collision
       if (
@@ -93,17 +112,20 @@ function draw() {
         carY < obs.y + obs.height &&
         carY + carHeight > obs.y
       ) {
-        noLoop();
+        stopAllSounds();
+        playSound("sounds\\crash-7075.mp3", false);
         textSize(32);
         fill(255, 0, 0);
         textAlign(CENTER, CENTER);
         text("Game Over", width / 2, height / 2);
-        //drawBackButton();
-        //enableBackButton();
+        enableBackButton(true);
+        enableRetryButton(true);
+
+        page = 4;
       }
 
       //remove obstacles that are past us
-      if (obs.y > height) {
+      if (obs.y - obstacleHeight / 2 > height) {
         obstacles.splice(i, 1);
       }
     }
@@ -116,80 +138,105 @@ function draw() {
     background(255);
     textSize(16);
     fill(0);
-    text(`Steering sensitivity: ${slider.value()}`, 180, 500);
+    text(`Steering sensitivity: ${slider.value()}`, 180, 180);
+    text(`Draw landmarks`, 150, 150);
     drawBackButton();
   }
   if (page == 3) {
     //TODO
     page = 0;
   }
+  if (page == 4) {
+    drawRetryButton();
+    drawBackButton();
+  }
+}
+
+function getValidObstacleX(tries) {
+  let valid = true;
+  while(tries > 0) {
+    let tryX = random(width / 2 - roadWidth / 2 + obstacleWidth/2 , width / 2 + roadWidth / 2 - obstacleWidth/2);
+    for(let i = obstacles.length - 1; i >= 0; i--) {
+      let obs = obstacles[i];
+      if(tryX + obstacleWidth >= obs.x && tryX - obstacleWidth < obs.x) {
+        valid = false;
+        break;
+      }
+    }
+    tries--;
+    if(valid)
+      return tryX;
+    else
+      valid = true;
+  }
+  return null;
 }
 
 function drawDriversCar(x, y, carWidth, carHeight) {
-  // Body of the car
-  fill(200, 0, 0); // Red color
+  //body of the car
+  fill(200, 0, 0);
   rectMode(CENTER);
-  rect(x, y, carWidth, carHeight, 10); // Rounded rectangle for the car body
+  rect(x, y, carWidth, carHeight, 10);
   
-  // Windows
-  fill(100, 200, 255); // Light blue color
+  //windows
+  fill(100, 200, 255);
     //front
-  rect(x, y - 12, carWidth * 0.8, carHeight * 0.2, 5); // Window area
+  rect(x, y - 12, carWidth * 0.8, carHeight * 0.2, 5);
     //back
-  rect(x, y + 25, carWidth * 0.8, carHeight * 0.1, 5); // Window area
+  rect(x, y + 25, carWidth * 0.8, carHeight * 0.1, 5);
   
-  // Wheels
-  fill("#232b2b"); // Dark gray for the wheels
+  //wheels
+  fill("#232b2b");
   let wheelOffsetX = carWidth * 0.55;
   let wheelOffsetY = carHeight * 0.6;
-  ellipse(x - wheelOffsetX, y - wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Top-left wheel
-  ellipse(x + wheelOffsetX, y - wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Top-right wheel
-  ellipse(x - wheelOffsetX, y + wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Bottom-left wheel
-  ellipse(x + wheelOffsetX, y + wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Bottom-right wheel
+  ellipse(x - wheelOffsetX, y - wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2);
+  ellipse(x + wheelOffsetX, y - wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2);
+  ellipse(x - wheelOffsetX, y + wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2);
+  ellipse(x + wheelOffsetX, y + wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2);
   
-  // Headlights
-  fill(255, 255, 100); // Yellow for headlights
+  //headlights
+  fill(255, 255, 100);
   ellipse(x - carWidth * 0.35, y - carHeight * 0.5, 10, 10); // Left headlight
   ellipse(x + carWidth * 0.35, y - carHeight * 0.5, 10, 10); // Right headlight
   
-  // Tail lights
-  fill(255, 50, 50); // Red for tail lights
-  ellipse(x - carWidth * 0.35, y + carHeight * 0.5, 10, 10); // Left tail light
-  ellipse(x + carWidth * 0.35, y + carHeight * 0.5, 10, 10); // Right tail light
+  //tail lights
+  fill(255, 50, 50);
+  ellipse(x - carWidth * 0.35, y + carHeight * 0.5, 10, 10);
+  ellipse(x + carWidth * 0.35, y + carHeight * 0.5, 10, 10);
   rectMode(CORNER);
 }
 
 function drawObstaclesCar(x, y, carWidth, carHeight, color) {
-  // Body of the car
-  fill(color); // Red color
+  //body of the car
+  fill(color);
   rectMode(CENTER);
-  rect(x, y, carWidth, carHeight, 10); // Rounded rectangle for the car body
+  rect(x, y, carWidth, carHeight, 10);
   
-  // Windows
+  //windows
   fill(100, 200, 255); // Light blue color
     //front
-  rect(x, y + 12, carWidth * 0.8, carHeight * 0.2, 5); // Window area
+  rect(x, y + 12, carWidth * 0.8, carHeight * 0.2, 5);
     //back
-  rect(x, y - 25, carWidth * 0.8, carHeight * 0.1, 5); // Window area
+  rect(x, y - 25, carWidth * 0.8, carHeight * 0.1, 5);
   
-  // Wheels
-  fill("#232b2b"); // Dark gray for the wheels
+  //wheels
+  fill("#232b2b");
   let wheelOffsetX = carWidth * 0.55;
   let wheelOffsetY = carHeight * 0.6;
-  ellipse(x - wheelOffsetX, y - wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Top-left wheel
-  ellipse(x + wheelOffsetX, y - wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Top-right wheel
-  ellipse(x - wheelOffsetX, y + wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Bottom-left wheel
-  ellipse(x + wheelOffsetX, y + wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2); // Bottom-right wheel
+  ellipse(x - wheelOffsetX, y - wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2);
+  ellipse(x + wheelOffsetX, y - wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2);
+  ellipse(x - wheelOffsetX, y + wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2);
+  ellipse(x + wheelOffsetX, y + wheelOffsetY / 2, carWidth * 0.2, carHeight * 0.2);
   
-  // Tail lights
-  fill("red"); // Red for headlights
-  ellipse(x - carWidth * 0.35, y - carHeight * 0.5, 10, 10); // Left headlight
-  ellipse(x + carWidth * 0.35, y - carHeight * 0.5, 10, 10); // Right headlight
+  //tail lights
+  fill("red");
+  ellipse(x - carWidth * 0.35, y - carHeight * 0.5, 10, 10);
+  ellipse(x + carWidth * 0.35, y - carHeight * 0.5, 10, 10);
   
-  // Head lights
-  fill("yellow"); // Yellow for tail lights
-  ellipse(x - carWidth * 0.35, y + carHeight * 0.5, 10, 10); // Left tail light
-  ellipse(x + carWidth * 0.35, y + carHeight * 0.5, 10, 10); // Right tail light
+  //head lights
+  fill("yellow");
+  ellipse(x - carWidth * 0.35, y + carHeight * 0.5, 10, 10);
+  ellipse(x + carWidth * 0.35, y + carHeight * 0.5, 10, 10);
   rectMode(CORNER);
 }
 
@@ -209,10 +256,16 @@ function drawBackButton() {
   backButton.display();
   backButton.checkHover(mouseX, mouseY);
 }
+function drawRetryButton() {
+  retryButton.display();
+  retryButton.checkHover(mouseX, mouseY);
+}
 function enableBackButton(enabled) {
   backButton.enabled = enabled;
 }
-
+function enableRetryButton(enabled) {
+  retryButton.enabled = enabled;
+}
 function mousePressed() {
   for (let btn of menuButtons) {
     if (btn.enabled && btn.isHovered) {
@@ -221,7 +274,36 @@ function mousePressed() {
   }
   if(backButton.enabled && backButton.isHovered) {
     backButton.onClick();
-  }  
+  }
+  if(retryButton.enabled && retryButton.isHovered) {
+    retryButton.onClick();
+  } 
+}
+
+function stopAllSounds() {
+  activeAudioSources.forEach(source => source.stop());
+  activeAudioSources.length = [];
+}
+
+async function playSound(pathToFile, playInLoop) {
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const response = await fetch(pathToFile);
+  const arrayBuffer = await response.arrayBuffer();
+  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  const soundSource = audioContext.createBufferSource();
+  soundSource.buffer = audioBuffer;
+  soundSource.connect(audioContext.destination);
+  soundSource.start();
+  console.log(`Playing ${pathToFile} audio file`);
+
+  activeAudioSources.push(soundSource);
+
+  soundSource.onended = () => {
+    console.log(`Sound effect ${pathToFile} has finished playing!`)
+    const index = activeAudioSources.indexOf(soundSource);
+    if (index > -1) activeAudioSources.splice(index, 1);
+    if (page == 1 && playInLoop) playSound(pathToFile, playInLoop);
+  };
 }
 
 function getAvgCoord(hand) {
@@ -246,12 +328,9 @@ function getAngle(c1, c2) {
 
 // get the predicted hand coords and steer the car
 window.addEventListener('predictions', (e) => {
-  //console.log(e.detail.message);
   let pred = e.detail.message;
-  //console.log(pred);
   if (pred.handednesses.length == 2) {
     let leftHand, rightHand;
-    //console.log(pred.handednesses[0][0].categoryName);
     if(pred.handednesses[0][0].categoryName == "Left")
     {
       //console.log("A")
@@ -280,7 +359,7 @@ window.addEventListener('predictions', (e) => {
     } else if (angle >= 0.05 && carX < width / 2 + roadWidth / 2 - carWidth) {
       //console.log("Right");
       carX += step*angle*(slider.value()/maxSens);
-    } else if (angle <= -0.05 && carX > width / 2 - roadWidth / 2) {
+    } else if (angle <= -0.05 && carX > width / 2 - roadWidth / 2 + carWidth) {
       //console.log("Left");
       carX -= step*abs(angle)*(slider.value()/maxSens);
     }
@@ -298,9 +377,16 @@ window.addEventListener('predictions', (e) => {
     } else if (avgZ/zStart < 1.1 && avgZ/zStart > 0.9) {
       //console.log("Don't change the speed");
     } else if (zStart < avgZ) {
-      speed = -zStart/avgZ;
+      if (-zStart/avgZ > -3)
+        speed = -zStart/avgZ;
+      else
+        speed = -3;
+      if(playBrake && page == 1)
+        playSound("sounds\\brake-6315.mp3", false);
+      playBrake = false;
     } else if (zStart > avgZ) {
       speed = avgZ/zStart;
+      playBrake = true;
     }
     //------------------------
   }
@@ -317,7 +403,7 @@ class Button {
     this.baseColor = color(100, 150, 250);
     this.hoverColor = color(150, 200, 255);
     this.textColor = color(255);
-    this.cornerRadius = 10; // Rounded corners
+    this.cornerRadius = 10;
     this.enabled = true;
   }
 
@@ -326,7 +412,6 @@ class Button {
     fill(this.isHovered ? this.hoverColor : this.baseColor);
     rect(this.x, this.y, this.w, this.h, this.cornerRadius);
 
-    // Draw label
     textSize(20);
     fill(this.textColor);
     textAlign(CENTER, CENTER);
@@ -340,28 +425,47 @@ class Button {
   onClick() {
     if (this.label === "Start Game") {
       slider.hide();
+      checkbox.hide();
       console.log("Start Game clicked");
       const eventStart = new CustomEvent('enablecam', { detail: { message: true } });
       window.dispatchEvent(eventStart);
       page = 1;
-      console.log(page);
+      enableRetryButton(false);
+      enableBackButton(false);
+      enableMenuButtons(false);
+      playSound("sounds\\car-acceleration-inside-car-7087.mp3", true);
     } else if (this.label === "Options") {
       slider.show();
+      checkbox.show();
       console.log("Options clicked");
       page = 2;
       enableBackButton(true);
       enableMenuButtons(false);
     } else if (this.label === "Quit") {
       slider.hide();
+      checkbox.hide();
       console.log("Quit clicked");
       page = 3;
     } else if (this.label == "Back") {
       slider.hide();
+      checkbox.hide();
+      if(page == 4)
+        window.location.reload();
       page = 0;
       console.log("Back")
       enableBackButton(false);
+      enableRetryButton(false);
       enableMenuButtons(true);
-      loop()
+    } else if (this.label == "Retry") {
+      console.log("Retry clicked");
+      obstacles = [];
+      carX = width / 2 - carWidth / 2;
+      carY = height - carHeight - 20;
+      score = 0;
+      page = 1;
+      enableRetryButton(false);
+      enableBackButton(false);
+      playSound("sounds\\car-acceleration-inside-car-7087.mp3", true);
     }
   }
 }

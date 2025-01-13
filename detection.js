@@ -10,7 +10,7 @@ import {
   
   // Before we can use HandLandmarker class we must wait for it to finish
   // loading. Machine Learning models can be large and take a moment to
-  // get everything needed to run.
+  // get everything needed to run
   const createHandLandmarker = async () => {
     const vision = await FilesetResolver.forVisionTasks(
       "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
@@ -67,7 +67,7 @@ import {
   
   let lastVideoTime = -1;
   let results = undefined;
-  console.log(video);
+  //console.log(video);
   export async function predictWebcam() {
     canvasElement.style.width = video.videoWidth;;
     canvasElement.style.height = video.videoHeight;
@@ -90,7 +90,7 @@ import {
 
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-    if (results.landmarks) {
+    if (results.landmarks && checkbox.checked()) {
       for (const landmarks of results.landmarks) {
         drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { 
           color: "#00FF00",
@@ -110,16 +110,13 @@ import {
   }
 
   function drawSteeringWheel(landmarks) {
-    //console.log(landmarks);
     if (landmarks.handednesses.length == 2) {
       let leftHand, rightHand;
       if(landmarks.handednesses[0][0].categoryName == "Left")
       {
-        //console.log("A")
         leftHand = landmarks.landmarks[0];
         rightHand = landmarks.landmarks[1];
       } else {
-        //console.log("B")
         leftHand = landmarks.landmarks[1];
         rightHand = landmarks.landmarks[0];
       }
@@ -132,14 +129,13 @@ import {
       let centerX = (leftHandCoord.x + rightHandCoord.x) / 2;
       let centerY = (leftHandCoord.y + rightHandCoord.y) / 2;
 
-      console.log(centerX);
+      //console.log(centerX);
 
       canvasCtx.save();
     
-      // Move to the center of the steering wheel
       canvasCtx.translate(centerX, centerY);
     
-      // Rotate the canvas by the desired angle
+      //rotate steering wheel
       canvasCtx.rotate(angle);
 
       let steeringWheelRadius = Math.sqrt((leftHandCoord.x- rightHandCoord.x)**2 + (leftHandCoord.y - rightHandCoord.y)**2) / 2;

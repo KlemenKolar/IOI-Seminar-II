@@ -16,15 +16,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
   </head>
 
-  <body>
+  <body style="background-color:white;">
     <script src="sketch.js"></script>
     <script type="module" src="detection.js"></script>
     <div style="display: flex;">
       <div style="flex: 1" id="game"></div>
       <div id="liveView" class="videoView" style="flex: 1;">
         <div style="position: relative;">
-          <video id="webcam" style="position: abso" autoplay playsinline></video>
-          <canvas class="output_canvas" id="output_canvas" style="position: absolute; left: 0px; top: 0px;"></canvas>
+          <video id="webcam" style="position: abso; transform: scaleX(-1); -webkit-transform: scaleX(-1);" autoplay playsinline></video>
+          <canvas class="output_canvas" id="output_canvas" style="position: absolute; left: 0px; top: 0px; transform: scaleX(-1); -webkit-transform: scaleX(-1);"></canvas>
         </div>
       </div>
     </div>
